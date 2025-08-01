@@ -31,7 +31,7 @@
                                                "~(lib/~A/~A/~)"
                                                (uiop:operating-system)
                                                (uiop:architecture))))
-  (:unix "libwebview.so")
+  (:unix "libwebview.so.0.12.0")
   (:windows "webview.dll")
   (:darwin "libwebview.dylib")
   (t (:default "libwebview")))
