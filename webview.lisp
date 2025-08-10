@@ -30,10 +30,11 @@
                                        (format nil
                                                "~(lib/~A/~A/~)"
                                                (uiop:operating-system)
-                                               (uiop:architecture))))
+                                               (or (uiop:architecture)
+                                                   #+arm64 "arm64"))))
+  (:os-macosx "libwebview.dylib")
   (:unix "libwebview.so.0.12.0")
   (:windows "webview.dll")
-  (:darwin "libwebview.dylib")
   (t (:default "libwebview")))
 
 (use-foreign-library libwebview)
