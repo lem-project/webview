@@ -1,4 +1,4 @@
-  name: Build Windows DLL (lib/windows/x64)
+name: Build Windows DLL (lib/windows/x64)
 
 on:
   workflow_dispatch:
