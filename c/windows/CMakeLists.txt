@@ -1,51 +1,39 @@
 cmake_minimum_required(VERSION 3.20)
 project(cl-webview-win LANGUAGES C CXX)
 
-# x64 前提
 if (NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
   message(FATAL_ERROR "This build expects MSVC on 64-bit (x64) Windows.")
 endif()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 include(FetchContent)
-# 上流 webview を取得（必要に応じてタグ固定）
+
+# upstream を取得（必要ならタグは調整）
 FetchContent_Declare(
   webview
   GIT_REPOSITORY https://github.com/webview/webview
   GIT_TAG        0.12.0
 )
+
+# upstream のビルドを有効化（共有ライブラリを作る）
+set(WEBVIEW_BUILD ON CACHE BOOL "" FORCE)
+set(WEBVIEW_BUILD_SHARED_LIBRARY ON CACHE BOOL "" FORCE)
+set(WEBVIEW_BUILD_STATIC_LIBRARY OFF CACHE BOOL "" FORCE)
+# 公式 WebView2 Loader DLL に頼らない最小実装（既定で ON だが明示しておく）
+set(WEBVIEW_USE_BUILTIN_MSWEBVIEW2 ON CACHE BOOL "" FORCE)
+
 FetchContent_MakeAvailable(webview)
 
-# C API を DLL 化（CFFI からロードする想定）
-add_library(webview SHARED)
-
-# 上流の C API 実装（パスは上流リポ構成に追従）
-target_sources(webview PRIVATE
-  ${webview_SOURCE_DIR}/webview/webview_capi.cpp
+# 生成物を取り出しやすい場所へコピーするターゲット
+add_custom_target(stage ALL
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/dist
+  COMMAND ${CMAKE_COMMAND} -E copy          $<TARGET_FILE:webview::core_shared>       ${CMAKE_BINARY_DIR}/dist/webview.dll
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_LINKER_FILE:webview::core_shared> ${CMAKE_BINARY_DIR}/dist/webview.lib
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_PDB_FILE:webview::core_shared>    ${CMAKE_BINARY_DIR}/dist/webview.pdb
+  DEPENDS webview::core_shared
 )
 
-# 上流のコアにリンク
-target_link_libraries(webview PRIVATE webview::core)
-
-# 必要に応じて DLL 名を固定したい場合は有効化
-# set_target_properties(webview PROPERTIES OUTPUT_NAME "libwebview")
-
-# 出力先
-set_target_properties(webview PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-)
-
-if (MSVC)
-  target_compile_definitions(webview PRIVATE -DUNICODE -D_UNICODE)
-  # 静的ランタイム (/MT) にしたい場合は以下を有効化
-  # foreach(flag_var  CMAKE_C_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELEASE)
-  #   string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-  # endforeach()
-endif()
-
-target_compile_definitions(webview PRIVATE WEBVIEW_LISP_BINDING=1)
+# 必要なら DLL 名を固定（BUILD.md に合わせて）
+# set_target_properties(webview::core_shared PROPERTIES OUTPUT_NAME "libwebview")

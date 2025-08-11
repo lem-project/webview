@@ -41,15 +41,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path lib/windows/x64 -Force | Out-Null
-          Copy-Item build/bin/Release/webview.dll lib/windows/x64/
-          if (Test-Path build/lib/Release/webview.lib) {
-            Copy-Item build/lib/Release/webview.lib lib/windows/x64/
-          } elseif (Test-Path build/bin/Release/webview.lib) {
-            Copy-Item build/bin/Release/webview.lib lib/windows/x64/
-          }
-          if (Test-Path build/bin/Release/webview.pdb) {
-            Copy-Item build/bin/Release/webview.pdb lib/windows/x64/
-          }
+          Copy-Item build/dist/webview.dll lib/windows/x64/
+          if (Test-Path build/dist/webview.lib) { Copy-Item build/dist/webview.lib lib/windows/x64/ }
+          if (Test-Path build/dist/webview.pdb) { Copy-Item build/dist/webview.pdb lib/windows/x64/ }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
