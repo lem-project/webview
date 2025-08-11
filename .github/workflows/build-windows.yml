@@ -1,14 +1,19 @@
-name: Build Windows DLL (lib/windows/x64)
+name: Build Windows DLL and open PR
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - ".github/workflows/build-windows.yml"
       - "c/windows/**"
+      - ".github/workflows/build-windows-and-pr.yml"
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: windows-lib-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   win-x64:
@@ -37,7 +42,7 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel
 
-      - name: Prepare lib/windows/x64
+      - name: Stage to lib/windows/x64
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path lib/windows/x64 -Force | Out-Null
@@ -45,8 +50,42 @@ jobs:
           if (Test-Path build/dist/webview.lib) { Copy-Item build/dist/webview.lib lib/windows/x64/ }
           if (Test-Path build/dist/webview.pdb) { Copy-Item build/dist/webview.pdb lib/windows/x64/ }
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Check if there are changes under lib/windows/x64
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -N lib/windows/x64 >/dev/null 2>&1 || true
+          if ! git diff --quiet -- lib/windows/x64; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Pull Request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
         with:
-          name: webview-windows-x64
-          path: lib/windows/x64/
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Add/Update Windows x64 webview binaries in lib/windows/x64"
+          title: "Windows: update lib/windows/x64 (webview.dll/.lib/.pdb)"
+          body: |
+            This PR updates the Windows x64 binaries generated from c/windows (CMake).
+            - Built with MSVC (x64), Release
+            - Copied files:
+              - webview.dll (required)
+              - webview.lib (if generated)
+              - webview.pdb (if generated)
+            CI run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          branch: ci/windows-lib-${{ github.run_id }}
+          delete-branch: true
+          add-paths: |
+            lib/windows/x64/**
+          labels: |
+            automated
+            windows
+          signoff: false
+
+      - name: No changes — nothing to PR
+        if: steps.diff.outputs.changed != 'true'
+        run: echo "No file changes under lib/windows/x64. Skipping PR."
