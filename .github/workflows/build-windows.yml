@@ -42,21 +42,21 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel
 
-      - name: Stage to lib/windows/x64
+      - name: Stage to lib/win/x64
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Path lib/windows/x64 -Force | Out-Null
-          Copy-Item build/dist/webview.dll lib/windows/x64/
-          if (Test-Path build/dist/webview.lib) { Copy-Item build/dist/webview.lib lib/windows/x64/ }
-          if (Test-Path build/dist/webview.pdb) { Copy-Item build/dist/webview.pdb lib/windows/x64/ }
+          New-Item -ItemType Directory -Path lib/win/x64 -Force | Out-Null
+          Copy-Item build/dist/webview.dll lib/win/x64/
+          if (Test-Path build/dist/webview.lib) { Copy-Item build/dist/webview.lib lib/win/x64/ }
+          if (Test-Path build/dist/webview.pdb) { Copy-Item build/dist/webview.pdb lib/win/x64/ }
 
-      - name: Check if there are changes under lib/windows/x64
+      - name: Check if there are changes under lib/win/x64
         id: diff
         shell: bash
         run: |
           set -euo pipefail
-          git add -N lib/windows/x64 >/dev/null 2>&1 || true
-          if ! git diff --quiet -- lib/windows/x64; then
+          git add -N lib/win/x64 >/dev/null 2>&1 || true
+          if ! git diff --quiet -- lib/win/x64; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -67,8 +67,8 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Add/Update Windows x64 webview binaries in lib/windows/x64"
-          title: "Windows: update lib/windows/x64 (webview.dll/.lib/.pdb)"
+          commit-message: "Add/Update Windows x64 webview binaries in lib/win/x64"
+          title: "Windows: update lib/win/x64 (webview.dll/.lib/.pdb)"
           body: |
             This PR updates the Windows x64 binaries generated from c/windows (CMake).
             - Built with MSVC (x64), Release
@@ -80,7 +80,7 @@ jobs:
           branch: ci/windows-lib-${{ github.run_id }}
           delete-branch: true
           add-paths: |
-            lib/windows/x64/**
+            lib/win/x64/**
           labels: |
             automated
             windows
@@ -88,4 +88,4 @@ jobs:
 
       - name: No changes — nothing to PR
         if: steps.diff.outputs.changed != 'true'
-        run: echo "No file changes under lib/windows/x64. Skipping PR."
+        run: echo "No file changes under lib/win/x64. Skipping PR."
