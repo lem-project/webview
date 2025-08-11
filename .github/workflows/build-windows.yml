@@ -1,0 +1,58 @@
+name: Build Windows DLL (lib/windows/x64)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-windows.yml"
+      - "c/windows/**"
+
+permissions:
+  contents: write
+
+jobs:
+  win-x64:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up MSVC env
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure (CMake, x64, Release)
+        run: >
+          cmake
+          -S c/windows
+          -B build
+          -G "Visual Studio 17 2022"
+          -A x64
+          -D CMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Prepare lib/windows/x64
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path lib/windows/x64 -Force | Out-Null
+          Copy-Item build/bin/Release/webview.dll lib/windows/x64/
+          if (Test-Path build/lib/Release/webview.lib) {
+            Copy-Item build/lib/Release/webview.lib lib/windows/x64/
+          } elseif (Test-Path build/bin/Release/webview.lib) {
+            Copy-Item build/bin/Release/webview.lib lib/windows/x64/
+          }
+          if (Test-Path build/bin/Release/webview.pdb) {
+            Copy-Item build/bin/Release/webview.pdb lib/windows/x64/
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-windows-x64
+          path: lib/windows/x64/
