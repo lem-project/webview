@@ -37,7 +37,8 @@
   (:windows "webview.dll")
   (t (:default "libwebview")))
 
-(use-foreign-library libwebview)
+(float-features:with-float-traps-masked (:divide-by-zero)
+  (use-foreign-library libwebview))
 
 (defctype webview-t :pointer)
 (defctype webview-error-t :int)
